@@ -6,7 +6,7 @@ import NotificationLogModel from '@/models/NotificationLog';
 import admin from 'firebase-admin';
 
 // Initialize Firebase Admin only once
-if (!admin.apps.length) {
+if (!admin?.apps?.length) {
   try {
     // In production, you would set FIREBASE_SERVICE_ACCOUNT in your Vercel env variables
     const serviceAccountStr = process.env.FIREBASE_SERVICE_ACCOUNT;
@@ -67,7 +67,7 @@ export async function POST(request) {
     let fcmResponseId = null;
     let pushError = null;
     
-    if (admin.apps.length > 0) {
+    if (admin?.apps?.length > 0) {
       const messagePayload = {
         notification: {
           title: title,
