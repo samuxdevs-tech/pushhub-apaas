@@ -3,7 +3,7 @@ import dbConnect from '@/lib/mongodb';
 import AppModel from '@/models/App';
 import DeviceModel from '@/models/Device';
 import NotificationLogModel from '@/models/NotificationLog';
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 
 // Initialize Firebase Admin only once
 if (!admin.apps.length) {
