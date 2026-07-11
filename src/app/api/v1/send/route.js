@@ -3,17 +3,18 @@ import dbConnect from '@/lib/mongodb';
 import AppModel from '@/models/App';
 import DeviceModel from '@/models/Device';
 import NotificationLogModel from '@/models/NotificationLog';
-import admin from 'firebase-admin';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
 
 // Initialize Firebase Admin only once
-if (!admin?.apps?.length) {
+if (!getApps().length) {
   try {
     // In production, you would set FIREBASE_SERVICE_ACCOUNT in your Vercel env variables
     const serviceAccountStr = process.env.FIREBASE_SERVICE_ACCOUNT;
     if (serviceAccountStr) {
       const serviceAccount = JSON.parse(serviceAccountStr);
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
+      initializeApp({
+        credential: cert(serviceAccount)
       });
     } else {
       console.warn('⚠️ FIREBASE_SERVICE_ACCOUNT environment variable is missing.');
@@ -67,7 +68,7 @@ export async function POST(request) {
     let fcmResponseId = null;
     let pushError = null;
     
-    if (admin?.apps?.length > 0) {
+    if (getApps().length > 0) {
       const messagePayload = {
         notification: {
           title: title,
@@ -82,7 +83,7 @@ export async function POST(request) {
       }
 
       try {
-        fcmResponseId = await admin.messaging().send(messagePayload);
+        fcmResponseId = await getMessaging().send(messagePayload);
       } catch (err) {
         pushError = err.message;
       }
