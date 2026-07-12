@@ -4,6 +4,7 @@ import NotificationLogModel from '@/models/NotificationLog';
 import DeviceModel from '@/models/Device';
 import CopyApiKey from '@/components/CopyApiKey';
 import SendNotificationForm from '@/components/SendNotificationForm';
+import FirebaseConfigForm from '@/components/FirebaseConfigForm';
 import Link from 'next/link';
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
@@ -66,6 +67,12 @@ export default async function AppDetail({ params }) {
           <p className="text-sm text-gray-400 mb-6">Usa este API Key en los headers de tus peticiones HTTP (<code className="bg-gray-800 px-1.5 py-0.5 rounded text-gray-300">Authorization: Bearer KEY</code>).</p>
           <CopyApiKey apiKey={app.apiKey} />
         </div>
+
+        {/* Firebase Configuration Form */}
+        <FirebaseConfigForm 
+          appId={app._id.toString()} 
+          hasCredentials={!!app.firebaseCredentials?.projectId} 
+        />
 
         {/* Console to send test pushes */}
         <SendNotificationForm apiKey={app.apiKey} />

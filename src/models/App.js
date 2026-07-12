@@ -15,6 +15,11 @@ const AppSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  firebaseCredentials: {
+    projectId: { type: String, required: false },
+    clientEmail: { type: String, required: false },
+    privateKey: { type: String, required: false }, // ENCRYPTED
+  },
   createdAt: {
     type: Date,
     default: Date.now,

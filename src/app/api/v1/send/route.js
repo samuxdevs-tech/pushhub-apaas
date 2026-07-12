@@ -7,23 +7,7 @@ import ScheduledNotificationModel from '@/models/ScheduledNotification';
 
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging';
-
-// Initialize Firebase Admin only once
-if (!getApps().length) {
-  try {
-    const serviceAccountStr = process.env.FIREBASE_SERVICE_ACCOUNT;
-    if (serviceAccountStr) {
-      const serviceAccount = JSON.parse(serviceAccountStr);
-      initializeApp({
-        credential: cert(serviceAccount)
-      });
-    } else {
-      console.warn('⚠️ FIREBASE_SERVICE_ACCOUNT environment variable is missing.');
-    }
-  } catch (error) {
-    console.error('Error initializing Firebase Admin:', error);
-  }
-}
+import { decrypt } from '@/lib/crypto';
 
 export async function POST(request) {
   try {
@@ -40,7 +24,12 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Unauthorized: Invalid API Key' }, { status: 401 });
     }
 
-    // 2. Parse payload
+    // 2. Check Firebase Credentials
+    if (!app.firebaseCredentials || !app.firebaseCredentials.projectId) {
+      return NextResponse.json({ success: false, error: 'Error: La aplicación no tiene conectada una cuenta de Firebase.' }, { status: 400 });
+    }
+
+    // 3. Parse payload
     const body = await request.json();
     const { senderId, receiverId, title, message: bodyMessage, data, scheduledFor } = body;
 
@@ -48,7 +37,7 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Missing title or message' }, { status: 400 });
     }
 
-    // 3. Handle Scheduled Notifications
+    // 4. Handle Scheduled Notifications
     if (scheduledFor) {
       const scheduledDate = new Date(scheduledFor);
       if (isNaN(scheduledDate.getTime())) {
@@ -58,7 +47,7 @@ export async function POST(request) {
       const scheduledLog = await ScheduledNotificationModel.create({
         appId: app._id,
         senderId: senderId || 'system',
-        receiverId: receiverId || null, // null means broadcast
+        receiverId: receiverId || null,
         title,
         body: bodyMessage,
         data: data || {},
@@ -73,14 +62,12 @@ export async function POST(request) {
       }, { status: 200 });
     }
 
-    // 4. Send Immediately
+    // 5. Send Immediately
     let pushTokens = [];
     if (receiverId) {
-      // Send to specific user
       const device = await DeviceModel.findOne({ appId: app._id, userId: receiverId });
       if (device && device.pushToken) pushTokens.push(device.pushToken);
     } else {
-      // Broadcast to all users
       const devices = await DeviceModel.find({ appId: app._id });
       pushTokens = devices.map(d => d.pushToken).filter(Boolean);
     }
@@ -100,14 +87,34 @@ export async function POST(request) {
 
     let fcmResponse = null;
     let pushError = null;
+
+    // 6. Dynamic Firebase Initialization (Multi-Tenant)
+    const appName = app._id.toString();
+    let firebaseApp = getApps().find(a => a.name === appName);
     
-    if (getApps().length > 0) {
+    if (!firebaseApp) {
+      try {
+        const decryptedKey = decrypt(app.firebaseCredentials.privateKey);
+        firebaseApp = initializeApp({
+          credential: cert({
+            projectId: app.firebaseCredentials.projectId,
+            clientEmail: app.firebaseCredentials.clientEmail,
+            privateKey: decryptedKey.replace(/\\n/g, '\n'),
+          })
+        }, appName);
+      } catch (err) {
+        console.error('Error in Firebase Init:', err);
+        pushError = 'Error desencriptando o inicializando Firebase para este cliente.';
+      }
+    }
+    
+    if (firebaseApp) {
       const messagePayload = {
         notification: {
           title: title,
           body: bodyMessage,
         },
-        tokens: pushTokens, // multicast array
+        tokens: pushTokens,
       };
       
       if (data) {
@@ -116,12 +123,11 @@ export async function POST(request) {
       }
 
       try {
-        fcmResponse = await getMessaging().sendEachForMulticast(messagePayload);
+        const messaging = getMessaging(firebaseApp);
+        fcmResponse = await messaging.sendEachForMulticast(messagePayload);
       } catch (err) {
         pushError = err.message;
       }
-    } else {
-      pushError = 'Firebase Admin not initialized (Missing Env Variable)';
     }
 
     // 5. Log the result

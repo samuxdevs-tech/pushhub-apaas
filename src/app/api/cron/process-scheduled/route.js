@@ -6,23 +6,8 @@ import NotificationLogModel from '@/models/NotificationLog';
 
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging';
-
-// Initialize Firebase Admin only once
-if (!getApps().length) {
-  try {
-    const serviceAccountStr = process.env.FIREBASE_SERVICE_ACCOUNT;
-    if (serviceAccountStr) {
-      const serviceAccount = JSON.parse(serviceAccountStr);
-      initializeApp({
-        credential: cert(serviceAccount)
-      });
-    } else {
-      console.warn('⚠️ FIREBASE_SERVICE_ACCOUNT environment variable is missing.');
-    }
-  } catch (error) {
-    console.error('Error initializing Firebase Admin:', error);
-  }
-}
+import { decrypt } from '@/lib/crypto';
+import AppModel from '@/models/App';
 
 // We can accept GET or POST from the cron job service
 export async function GET(request) {
@@ -94,27 +79,51 @@ async function handleCron(request) {
       let pushError = null;
       let fcmResponse = null;
 
-      if (getApps().length > 0) {
-        const messagePayload = {
-          notification: {
-            title: notif.title,
-            body: notif.body,
-          },
-          tokens: pushTokens,
-        };
+      // Dynamic Firebase Initialization (Multi-Tenant)
+      const appRecord = await AppModel.findById(notif.appId);
+      if (!appRecord || !appRecord.firebaseCredentials || !appRecord.firebaseCredentials.projectId) {
+        pushError = 'La aplicación no tiene configuradas sus credenciales de Firebase.';
+      } else {
+        const appName = appRecord._id.toString();
+        let firebaseApp = getApps().find(a => a.name === appName);
         
-        if (notif.data) {
-          messagePayload.data = typeof notif.data === 'object' ? 
-            Object.fromEntries(Object.entries(notif.data).map(([k,v]) => [k, String(v)])) : notif.data;
+        if (!firebaseApp) {
+          try {
+            const decryptedKey = decrypt(appRecord.firebaseCredentials.privateKey);
+            firebaseApp = initializeApp({
+              credential: cert({
+                projectId: appRecord.firebaseCredentials.projectId,
+                clientEmail: appRecord.firebaseCredentials.clientEmail,
+                privateKey: decryptedKey.replace(/\\n/g, '\n'),
+              })
+            }, appName);
+          } catch (err) {
+            console.error('Error in Cron Firebase Init:', err);
+            pushError = 'Error desencriptando o inicializando Firebase para este cliente.';
+          }
         }
 
-        try {
-          fcmResponse = await getMessaging().sendEachForMulticast(messagePayload);
-        } catch (err) {
-          pushError = err.message;
+        if (firebaseApp) {
+          const messagePayload = {
+            notification: {
+              title: notif.title,
+              body: notif.body,
+            },
+            tokens: pushTokens,
+          };
+          
+          if (notif.data) {
+            messagePayload.data = typeof notif.data === 'object' ? 
+              Object.fromEntries(Object.entries(notif.data).map(([k,v]) => [k, String(v)])) : notif.data;
+          }
+
+          try {
+            const messaging = getMessaging(firebaseApp);
+            fcmResponse = await messaging.sendEachForMulticast(messagePayload);
+          } catch (err) {
+            pushError = err.message;
+          }
         }
-      } else {
-        pushError = 'Firebase Admin not initialized';
       }
 
       // Update Scheduled Notification status
