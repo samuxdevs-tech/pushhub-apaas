@@ -33,8 +33,8 @@ export default async function AppDetail({ params }) {
     <div className="min-h-screen bg-[#0a0a0a] text-gray-100 p-8 font-sans selection:bg-indigo-500/30">
       <div className="max-w-5xl mx-auto">
         <header className="mb-10">
-          <Link href="/" className="inline-flex items-center text-indigo-400 hover:text-indigo-300 transition-colors mb-6 font-medium group">
-            <svg className="w-5 h-5 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          <Link href="/dashboard" className="text-indigo-400 hover:text-indigo-300 flex items-center transition-colors font-medium mb-6">
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
             Volver al Dashboard
           </Link>
           <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-6">
