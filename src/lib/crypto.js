@@ -3,7 +3,7 @@ import crypto from 'crypto';
 const ALGORITHM = 'aes-256-cbc';
 
 // In production, this MUST be exactly 32 characters long
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default_secret_key_must_be_32_ch'; // fallback ONLY for local dev
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'v3cocVekTpVpGDUrOpk62CaYfKnlWzDk'; // fallback ONLY for local dev
 const IV_LENGTH = 16; 
 
 export function encrypt(text) {
