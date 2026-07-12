@@ -56,8 +56,8 @@ export async function POST(request) {
       metadata: {
         clerkUserId: userId,
       },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/pricing`,
+      success_url: `${new URL(request.url).origin}/dashboard?success=true`,
+      cancel_url: `${new URL(request.url).origin}/pricing`,
     });
 
     // Redirigir al usuario a la página de pago segura alojada por Stripe
