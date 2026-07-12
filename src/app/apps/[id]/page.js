@@ -3,6 +3,7 @@ import AppModel from '@/models/App';
 import NotificationLogModel from '@/models/NotificationLog';
 import DeviceModel from '@/models/Device';
 import CopyApiKey from '@/components/CopyApiKey';
+import SendNotificationForm from '@/components/SendNotificationForm';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -57,6 +58,9 @@ export default async function AppDetail({ params }) {
           <p className="text-sm text-gray-400 mb-6">Usa este API Key en los headers de tus peticiones HTTP (<code className="bg-gray-800 px-1.5 py-0.5 rounded text-gray-300">Authorization: Bearer KEY</code>).</p>
           <CopyApiKey apiKey={app.apiKey} />
         </div>
+
+        {/* Console to send test pushes */}
+        <SendNotificationForm apiKey={app.apiKey} />
 
         <div className="bg-gray-900/40 backdrop-blur-md rounded-3xl border border-gray-800/60 shadow-[0_8px_30px_rgba(0,0,0,0.5)] overflow-hidden">
           <div className="px-8 py-6 border-b border-gray-800/60 bg-gray-900/50 flex justify-between items-center">
