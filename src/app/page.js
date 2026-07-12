@@ -13,6 +13,9 @@ export default async function LandingPage() {
           IPTPush
         </div>
         <div>
+          <Link href="/docs" className="text-sm font-semibold text-gray-300 hover:text-white transition-colors mr-6">
+            Documentación
+          </Link>
           {userId ? (
             <Link href="/dashboard" className="text-sm font-bold bg-white text-black px-6 py-2.5 rounded-full hover:bg-gray-200 transition-colors">
               Ir al Dashboard
@@ -54,9 +57,9 @@ export default async function LandingPage() {
               </button>
             </SignUpButton>
           )}
-          <a href="https://www.npmjs.com/package/iptpush-sdk" target="_blank" rel="noreferrer" className="px-8 py-4 bg-gray-800 hover:bg-gray-700 rounded-full font-bold text-lg border border-gray-700 transition-colors">
-            Ver SDK en NPM
-          </a>
+          <Link href="/docs" className="px-8 py-4 bg-gray-800 hover:bg-gray-700 rounded-full font-bold text-lg border border-gray-700 transition-colors flex items-center gap-2">
+            Ver Documentación
+          </Link>
         </div>
       </div>
 

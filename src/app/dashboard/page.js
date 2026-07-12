@@ -30,6 +30,9 @@ export default async function Dashboard() {
             <p className="text-gray-400 font-medium">Tu centro de control de notificaciones push</p>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/docs" className="text-sm font-medium text-gray-400 hover:text-white transition-colors mr-2 hidden sm:block">
+              📖 Documentación
+            </Link>
             <CreateAppButton />
             <UserButton afterSignOutUrl="/" />
           </div>
