@@ -53,7 +53,12 @@ export default async function Dashboard() {
                       <div className="w-14 h-14 bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 rounded-2xl flex items-center justify-center text-indigo-400 font-bold text-2xl group-hover:scale-110 group-hover:from-indigo-500/40 group-hover:to-cyan-500/40 transition-all duration-300 border border-indigo-500/10">
                         {app.name.charAt(0).toUpperCase()}
                       </div>
-                      <div className="w-2 h-2 rounded-full bg-green-500/80 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
+                      
+                      {app.firebaseCredentials?.projectId ? (
+                        <div className="w-3 h-3 rounded-full bg-green-500/80 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse" title="Firebase Conectado"></div>
+                      ) : (
+                        <div className="w-3 h-3 rounded-full bg-yellow-500/90 shadow-[0_0_8px_rgba(234,179,8,0.6)] animate-bounce" title="⚠️ Falta configurar Firebase"></div>
+                      )}
                     </div>
                     <h3 className="text-xl font-bold text-gray-100 group-hover:text-indigo-300 transition-colors">{app.name}</h3>
                   </div>
