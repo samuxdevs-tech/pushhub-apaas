@@ -5,15 +5,23 @@ import DeviceModel from '@/models/Device';
 import CopyApiKey from '@/components/CopyApiKey';
 import SendNotificationForm from '@/components/SendNotificationForm';
 import Link from 'next/link';
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AppDetail({ params }) {
-  await dbConnect();
-  
+  const { userId } = await auth();
+  if (!userId) {
+    redirect('/');
+  }
+
   const { id } = await params;
-  
-  const app = await AppModel.findById(id);
+
+  await dbConnect();
+
+  // Find app AND ensure it belongs to the logged in user
+  const app = await AppModel.findOne({ _id: id, userId });
   if (!app) {
     return <div className="p-8 text-white min-h-screen bg-[#0a0a0a]">Aplicación no encontrada.</div>;
   }

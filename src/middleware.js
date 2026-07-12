@@ -1,27 +1,19 @@
-import { NextResponse } from 'next/server';
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
-export function middleware(request) {
-  const { pathname } = request.nextUrl;
-  
-  // Do not protect API routes, login page, or static files
-  if (
-    pathname.startsWith('/api') || 
-    pathname === '/login' || 
-    pathname.startsWith('/_next') || 
-    pathname.startsWith('/favicon.ico')
-  ) {
-    return NextResponse.next();
+const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/apps(.*)']);
+
+export default clerkMiddleware(async (auth, req) => {
+  if (isProtectedRoute(req)) {
+    await auth.protect();
   }
-
-  const authCookie = request.cookies.get('admin_auth');
-  
-  if (!authCookie || authCookie.value !== 'authenticated') {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-
-  return NextResponse.next();
-}
+});
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|login).*)'],
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
 };

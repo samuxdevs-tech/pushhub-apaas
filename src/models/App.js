@@ -1,6 +1,10 @@
 import mongoose from 'mongoose';
 
 const AppSchema = new mongoose.Schema({
+  userId: {
+    type: String,
+    required: true,
+  },
   name: {
     type: String,
     required: [true, 'Please provide a name for this app.'],

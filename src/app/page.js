@@ -1,60 +1,90 @@
-import dbConnect from '@/lib/mongodb';
-import AppModel from '@/models/App';
-import CreateAppButton from '@/components/CreateAppButton';
+import { SignInButton, SignUpButton } from '@clerk/nextjs';
+import { auth } from '@clerk/nextjs/server';
 import Link from 'next/link';
 
-export const dynamic = 'force-dynamic';
-
-export default async function Dashboard() {
-  await dbConnect();
-  
-  const apps = await AppModel.find({}).sort({ createdAt: -1 });
+export default async function LandingPage() {
+  const { userId } = await auth();
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-gray-100 p-8 font-sans selection:bg-indigo-500/30">
-      <div className="max-w-5xl mx-auto">
-        <header className="flex flex-col md:flex-row md:justify-between md:items-center mb-12 gap-6">
-          <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400 mb-2">
-              PushHub
-            </h1>
-            <p className="text-gray-400 font-medium">Tu centro de control de notificaciones push</p>
-          </div>
-          <CreateAppButton />
-        </header>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {apps.length === 0 ? (
-            <div className="col-span-full text-center py-20 bg-gray-900/50 rounded-3xl border border-gray-800/60 border-dashed backdrop-blur-sm">
-              <div className="w-16 h-16 bg-gray-800 rounded-2xl mx-auto mb-4 flex items-center justify-center">
-                <span className="text-2xl">🚀</span>
-              </div>
-              <h3 className="text-xl font-bold text-gray-200 mb-2">Aún no hay aplicaciones</h3>
-              <p className="text-gray-500">Crea tu primera app para empezar a enviar notificaciones.</p>
-            </div>
+    <div className="min-h-screen bg-[#0a0a0a] text-gray-100 font-sans overflow-hidden">
+      {/* Navbar */}
+      <nav className="absolute top-0 w-full p-6 flex justify-between items-center z-10">
+        <div className="text-2xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">
+          IPTPush
+        </div>
+        <div>
+          {userId ? (
+            <Link href="/dashboard" className="text-sm font-bold bg-white text-black px-6 py-2.5 rounded-full hover:bg-gray-200 transition-colors">
+              Ir al Dashboard
+            </Link>
           ) : (
-            apps.map((app) => (
-              <Link href={`/apps/${app._id}`} key={app._id.toString()}>
-                <div className="bg-gray-900/40 backdrop-blur-md p-6 rounded-3xl border border-gray-800/60 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.5)] hover:shadow-[0_8px_32px_-8px_rgba(99,102,241,0.2)] hover:border-indigo-500/30 transition-all duration-300 cursor-pointer group h-full flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start mb-6">
-                      <div className="w-14 h-14 bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 rounded-2xl flex items-center justify-center text-indigo-400 font-bold text-2xl group-hover:scale-110 group-hover:from-indigo-500/40 group-hover:to-cyan-500/40 transition-all duration-300 border border-indigo-500/10">
-                        {app.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="w-2 h-2 rounded-full bg-green-500/80 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-100 group-hover:text-indigo-300 transition-colors">{app.name}</h3>
-                  </div>
-                  <div className="mt-6 flex items-center text-xs text-gray-500 font-medium">
-                    <svg className="w-4 h-4 mr-1.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                    Creada el {new Date(app.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
-              </Link>
-            ))
+            <SignInButton mode="modal">
+              <button className="text-sm font-bold bg-white text-black px-6 py-2.5 rounded-full hover:bg-gray-200 transition-colors shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)]">
+                Iniciar Sesión
+              </button>
+            </SignInButton>
           )}
         </div>
+      </nav>
+
+      {/* Hero Section */}
+      <div className="relative pt-32 pb-20 sm:pt-40 sm:pb-24 lg:pb-32 px-6 flex flex-col items-center text-center">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[400px] bg-gradient-to-br from-indigo-500/20 to-purple-500/20 blur-[120px] rounded-full pointer-events-none"></div>
+        
+        <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight mb-8 z-10 max-w-4xl">
+          Notificaciones Push <br/>
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-400">
+            Sin el dolor de cabeza.
+          </span>
+        </h1>
+        
+        <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mb-12 z-10">
+          La primera plataforma (aPaaS) que te permite integrar, enviar y programar notificaciones push en tus apps en menos de 3 minutos. Olvídate de Firebase Admin.
+        </p>
+
+        <div className="flex gap-4 z-10">
+          {userId ? (
+            <Link href="/dashboard" className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full font-bold text-lg hover:scale-105 transition-transform shadow-lg shadow-indigo-500/25">
+              Abrir mi Consola
+            </Link>
+          ) : (
+            <SignUpButton mode="modal">
+              <button className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full font-bold text-lg hover:scale-105 transition-transform shadow-lg shadow-indigo-500/25">
+                Empezar Gratis
+              </button>
+            </SignUpButton>
+          )}
+          <a href="https://www.npmjs.com/package/iptpush-sdk" target="_blank" rel="noreferrer" className="px-8 py-4 bg-gray-800 hover:bg-gray-700 rounded-full font-bold text-lg border border-gray-700 transition-colors">
+            Ver SDK en NPM
+          </a>
+        </div>
       </div>
+
+      {/* Code Showcase Section */}
+      <div className="max-w-4xl mx-auto px-6 z-10 relative mt-10 mb-20">
+        <div className="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500"></div>
+          <div className="flex items-center gap-2 mb-6">
+            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            <span className="ml-2 text-sm text-gray-500 font-mono">backend.js</span>
+          </div>
+          <pre className="text-gray-300 font-mono text-sm sm:text-base overflow-x-auto">
+            <code>
+              <span className="text-purple-400">import</span> IPTPush <span className="text-purple-400">from</span> <span className="text-green-400">'iptpush-sdk'</span>;<br/><br/>
+              <span className="text-gray-500">// 1. Inicializa con tu API Key</span><br/>
+              IPTPush.<span className="text-blue-400">init</span>(<span className="text-green-400">'pk_live_tu_api_key'</span>);<br/><br/>
+              <span className="text-gray-500">// 2. Envía notificaciones masivas o programadas en 1 línea</span><br/>
+              <span className="text-purple-400">await</span> IPTPush.<span className="text-blue-400">sendPush</span>({'{'}<br/>
+              {'  '}title: <span className="text-green-400">'¡Hola Mundo!'</span>,<br/>
+              {'  '}message: <span className="text-green-400">'Esta es una notificación real'</span><br/>
+              {'}'});
+            </code>
+          </pre>
+        </div>
+      </div>
+
     </div>
   );
 }
