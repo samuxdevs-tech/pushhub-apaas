@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function SendNotificationForm({ apiKey }) {
   const [title, setTitle] = useState('');
@@ -8,6 +8,41 @@ export default function SendNotificationForm({ apiKey }) {
   const [scheduledFor, setScheduledFor] = useState('');
   const [status, setStatus] = useState(null); // { type: 'success' | 'error', text: '' }
   const [loading, setLoading] = useState(false);
+
+  // Lazy Load State
+  const [users, setUsers] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [hasMoreUsers, setHasMoreUsers] = useState(false);
+
+  useEffect(() => {
+    loadUsers(0);
+  }, []);
+
+  const loadUsers = async (skipCount) => {
+    setLoadingUsers(true);
+    try {
+      const limit = skipCount === 0 ? 30 : 5;
+      const res = await fetch(`/api/v1/devices?skip=${skipCount}&limit=${limit}`, {
+        headers: { 'Authorization': `Bearer ${apiKey}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (skipCount === 0) {
+          setUsers(data.users);
+        } else {
+          setUsers(prev => [...prev, ...data.users]);
+        }
+        setTotalCount(data.totalCount);
+        setHasMoreUsers(data.hasMore);
+      }
+    } catch (err) {
+      console.error('Error cargando usuarios', err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -51,7 +86,6 @@ export default function SendNotificationForm({ apiKey }) {
         setReceiverId('');
         setScheduledFor('');
         
-        // Refresh page after 2 seconds to see logs if not scheduled
         if (!data.scheduledId) {
           setTimeout(() => window.location.reload(), 2000);
         }
@@ -105,15 +139,52 @@ export default function SendNotificationForm({ apiKey }) {
           </div>
           
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Receptor (Opcional)</label>
-              <input 
-                type="text"
-                value={receiverId}
-                onChange={(e) => setReceiverId(e.target.value)}
-                placeholder="Dejar vacío para Broadcast a todos"
-                className="w-full bg-gray-950/50 border border-gray-800 text-gray-100 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all placeholder-gray-600"
-              />
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-300 mb-1 flex justify-between">
+                <span>Receptor (Opcional)</span>
+                <span className="text-xs text-gray-500">{totalCount} usuarios totales</span>
+              </label>
+              <button 
+                type="button" 
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="w-full bg-gray-950/50 border border-gray-800 text-gray-100 rounded-xl px-4 py-2.5 text-left focus:outline-none focus:ring-2 focus:ring-purple-500/50 flex justify-between items-center transition-all"
+              >
+                <span className={receiverId === '' ? 'text-purple-300 font-medium' : 'text-gray-100'}>
+                  {receiverId === '' ? '📢 Enviar a Todos (Broadcast Masivo)' : receiverId}
+                </span>
+                <svg className={`w-4 h-4 text-gray-500 transform transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              </button>
+              
+              {dropdownOpen && (
+                <div className="absolute z-20 mt-2 w-full bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-h-64 overflow-y-auto">
+                  <ul className="py-1 text-gray-300 text-sm">
+                    <li 
+                      className="px-4 py-3 hover:bg-purple-900/40 cursor-pointer flex items-center border-b border-gray-800 text-purple-300 font-medium"
+                      onClick={() => { setReceiverId(''); setDropdownOpen(false); }}
+                    >
+                      📢 Enviar a Todos (Broadcast Masivo)
+                    </li>
+                    {users.map(u => (
+                      <li 
+                        key={u} 
+                        className="px-4 py-2.5 hover:bg-gray-800 cursor-pointer"
+                        onClick={() => { setReceiverId(u); setDropdownOpen(false); }}
+                      >
+                        {u}
+                      </li>
+                    ))}
+                    {loadingUsers && <li className="px-4 py-3 text-center text-gray-500">Cargando usuarios...</li>}
+                    {hasMoreUsers && !loadingUsers && (
+                      <li 
+                        className="px-4 py-3 text-center text-purple-400 hover:text-purple-300 hover:bg-purple-900/20 font-medium cursor-pointer border-t border-gray-800"
+                        onClick={(e) => { e.stopPropagation(); loadUsers(users.length); }}
+                      >
+                        Cargar 5 más...
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">Programar para (Opcional)</label>
