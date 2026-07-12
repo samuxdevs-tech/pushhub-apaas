@@ -3,13 +3,14 @@ import dbConnect from '@/lib/mongodb';
 import AppModel from '@/models/App';
 import DeviceModel from '@/models/Device';
 import NotificationLogModel from '@/models/NotificationLog';
+import ScheduledNotificationModel from '@/models/ScheduledNotification';
+
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging';
 
 // Initialize Firebase Admin only once
 if (!getApps().length) {
   try {
-    // In production, you would set FIREBASE_SERVICE_ACCOUNT in your Vercel env variables
     const serviceAccountStr = process.env.FIREBASE_SERVICE_ACCOUNT;
     if (serviceAccountStr) {
       const serviceAccount = JSON.parse(serviceAccountStr);
@@ -41,31 +42,63 @@ export async function POST(request) {
 
     // 2. Parse payload
     const body = await request.json();
-    const { senderId, receiverId, title, message: bodyMessage, data } = body;
+    const { senderId, receiverId, title, message: bodyMessage, data, scheduledFor } = body;
 
-    if (!receiverId || !title || !bodyMessage) {
-      return NextResponse.json({ success: false, error: 'Missing receiverId, title, or message' }, { status: 400 });
+    if (!title || !bodyMessage) {
+      return NextResponse.json({ success: false, error: 'Missing title or message' }, { status: 400 });
     }
 
-    // 3. Find the receiver's push token
-    const device = await DeviceModel.findOne({ appId: app._id, userId: receiverId });
-    
-    if (!device || !device.pushToken) {
-      // Log failure
+    // 3. Handle Scheduled Notifications
+    if (scheduledFor) {
+      const scheduledDate = new Date(scheduledFor);
+      if (isNaN(scheduledDate.getTime())) {
+        return NextResponse.json({ success: false, error: 'Invalid scheduledFor date format' }, { status: 400 });
+      }
+
+      const scheduledLog = await ScheduledNotificationModel.create({
+        appId: app._id,
+        senderId: senderId || 'system',
+        receiverId: receiverId || null, // null means broadcast
+        title,
+        body: bodyMessage,
+        data: data || {},
+        scheduledFor: scheduledDate,
+        status: 'pending'
+      });
+
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Notification scheduled successfully', 
+        scheduledId: scheduledLog._id 
+      }, { status: 200 });
+    }
+
+    // 4. Send Immediately
+    let pushTokens = [];
+    if (receiverId) {
+      // Send to specific user
+      const device = await DeviceModel.findOne({ appId: app._id, userId: receiverId });
+      if (device && device.pushToken) pushTokens.push(device.pushToken);
+    } else {
+      // Broadcast to all users
+      const devices = await DeviceModel.find({ appId: app._id });
+      pushTokens = devices.map(d => d.pushToken).filter(Boolean);
+    }
+
+    if (pushTokens.length === 0) {
       await NotificationLogModel.create({
         appId: app._id,
-        senderId,
-        receiverId,
+        senderId: senderId || 'system',
+        receiverId: receiverId || 'ALL',
         title,
         body: bodyMessage,
         status: 'failed',
-        error: 'Receiver token not found'
+        error: 'No push tokens found'
       });
-      return NextResponse.json({ success: false, error: 'Receiver push token not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'No devices found to send notification' }, { status: 404 });
     }
 
-    // 4. Send Push Notification via Firebase Admin
-    let fcmResponseId = null;
+    let fcmResponse = null;
     let pushError = null;
     
     if (getApps().length > 0) {
@@ -74,7 +107,7 @@ export async function POST(request) {
           title: title,
           body: bodyMessage,
         },
-        token: device.pushToken,
+        tokens: pushTokens, // multicast array
       };
       
       if (data) {
@@ -83,7 +116,7 @@ export async function POST(request) {
       }
 
       try {
-        fcmResponseId = await getMessaging().send(messagePayload);
+        fcmResponse = await getMessaging().sendEachForMulticast(messagePayload);
       } catch (err) {
         pushError = err.message;
       }
@@ -94,8 +127,8 @@ export async function POST(request) {
     // 5. Log the result
     const log = await NotificationLogModel.create({
       appId: app._id,
-      senderId,
-      receiverId,
+      senderId: senderId || 'system',
+      receiverId: receiverId || 'ALL',
       title,
       body: bodyMessage,
       status: pushError ? 'failed' : 'sent',
@@ -106,7 +139,13 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: pushError, log }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, messageId: fcmResponseId, log }, { status: 200 });
+    return NextResponse.json({ 
+      success: true, 
+      successCount: fcmResponse?.successCount, 
+      failureCount: fcmResponse?.failureCount, 
+      log 
+    }, { status: 200 });
+
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
