@@ -1,5 +1,6 @@
 import dbConnect from '@/lib/mongodb';
 import AppModel from '@/models/App';
+import UserModel from '@/models/User';
 import CreateAppButton from '@/components/CreateAppButton';
 import Link from 'next/link';
 import { auth } from '@clerk/nextjs/server';
@@ -8,7 +9,7 @@ import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-export default async function Dashboard() {
+export default async function Dashboard({ searchParams }) {
   const { userId } = await auth();
   
   if (!userId) {
@@ -18,19 +19,37 @@ export default async function Dashboard() {
   await dbConnect();
   
   const apps = await AppModel.find({ userId }).sort({ createdAt: -1 });
+  
+  // Buscar usuario para ver si es Pro
+  let user = await UserModel.findOne({ clerkUserId: userId });
+  const isPro = user?.isPro || false;
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-gray-100 p-8 font-sans selection:bg-indigo-500/30">
       <div className="max-w-5xl mx-auto">
         <header className="flex flex-col md:flex-row md:justify-between md:items-center mb-12 gap-6">
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400 mb-2">
-              PushHub
+            <h1 className="text-4xl font-extrabold tracking-tight flex items-center gap-3 mb-2">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">PushHub</span>
+              {isPro ? (
+                <span className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black text-sm font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-[0_0_15px_rgba(234,179,8,0.5)]">
+                  PRO
+                </span>
+              ) : (
+                <span className="bg-gray-800 text-gray-400 text-sm font-bold px-3 py-1 rounded-full uppercase">
+                  Gratis
+                </span>
+              )}
             </h1>
             <p className="text-gray-400 font-medium">Tu centro de control de notificaciones push</p>
           </div>
-          <div className="flex items-center gap-4">
-            <Link href="/docs" className="text-sm font-medium text-gray-400 hover:text-white transition-colors mr-2 hidden sm:block">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            {!isPro && (
+              <Link href="/pricing" className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400 hover:scale-105 transition-transform flex items-center gap-1">
+                ⭐ Actualizar a Pro
+              </Link>
+            )}
+            <Link href="/docs" className="text-sm font-medium text-gray-400 hover:text-white transition-colors hidden sm:block">
               📖 Documentación
             </Link>
             <CreateAppButton />
