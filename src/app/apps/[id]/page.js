@@ -21,8 +21,8 @@ export default async function AppDetail({ params }) {
   await dbConnect();
 
   // Find app AND ensure it belongs to the logged in user
-  const app = await AppModel.findOne({ _id: id, userId });
-  if (!app) {
+  const app = await AppModel.findById(id);
+  if (!app || app.userId !== userId) {
     return <div className="p-8 text-white min-h-screen bg-[#0a0a0a]">Aplicación no encontrada.</div>;
   }
 
